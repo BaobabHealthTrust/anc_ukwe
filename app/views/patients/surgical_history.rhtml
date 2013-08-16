@@ -1,0 +1,72 @@
+# medical_history.rhtml
+
+<script type="text/javascript" language="javascript">
+  <!--
+  tt_cancel_show = "/patients/show/<%= @patient.id %>";
+  tt_cancel_destination = "/patients/show/<%= @patient.id %>";
+  
+  // Every 500 milliseconds update the Next/Finish button
+  function updateNextFinish(){
+    if (tstInputTarget.value == '')
+      $('nextButton').innerHTML = '<span>Finish</span>';
+    else
+      $('nextButton').innerHTML = '<span>Next</span>';
+    setTimeout(updateNextFinish, 500)
+  }
+</script>
+
+<% form_tag :controller => "encounters", :action => "create" do %>
+  <%= hidden_field_tag "encounter[encounter_type_name]", "SURGICAL HISTORY" %>
+  <%= hidden_field_tag "encounter[patient_id]", @patient.id %>
+  <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
+  <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
+  <%session_date = session[:datetime] || Time.now() %>
+
+  <%= touch_text_field_tag "Procedure Done", @patient, nil,
+    {:id => "surgical1",
+    :helptext => "Surgical procedure done before" } %>
+
+  <%= touch_date_tag "Date", @patient, nil,
+    {:id => "date_done1",
+    :helptext => "Date Procedure Done",
+    :tt_onUnLoad => "if(__$('date_done#{1}').value != 'Unknown') {__$('observations__obs_datetime_surgical#{1}').value = " + 
+        "__$('date_done#{1}').value} else {__$('observations__obs_datetime_surgical#{1}').value = '#{DateTime.now}'}" } %>
+
+  <% (2..8).each do |e| %>
+
+    <%
+    indice = ""
+    case e
+    when 1
+      indice = "<sup>st</sup>"
+    when 2
+      indice = "<sup>nd</sup>"
+    when 3
+      indice = "<sup>rd</sup>"
+    else
+      indice = "<sup>th</sup>"
+    end
+
+    @procedures = ["", "Spontaneous vaginal delivery", "Caesarean Section", "Vacuum Extraction"]
+  %>
+
+    <%= touch_text_field_tag "Procedure Done", @patient, nil,
+      {:id => "surgical#{e}",
+      :helptext => "#{e}#{indice} Surgical procedure done before",
+      :condition => "__$('surgical#{e - 1}').value != ''",
+      :tt_onLoad => "setTimeout(updateNextFinish, 20)",
+      :optional => "true"
+    } %>
+
+    <%= touch_date_tag "Date", @patient, nil,
+      {:id => "date_done#{e}",
+      :helptext => "Date #{e}#{indice} Procedure Done",
+      :condition => "__$('surgical#{e}').value != ''",
+      :tt_onUnLoad => "if(__$('date_done#{e}').value != 'Unknown') {__$('observations__obs_datetime_surgical#{e}').value = " + 
+        "__$('date_done#{e}').value} else {__$('observations__obs_datetime_surgical#{e}').value = '#{DateTime.now}'}"
+    } %>
+
+  <% end %>
+
+  <%= submit_tag 'Finish' %>
+<% end %>

@@ -1,0 +1,79 @@
+<script type="text/javascript" language="javascript">
+  <!--
+  tt_cancel_show = "/clinic";
+  tt_cancel_destination = "/clinic";
+  //-->
+</script>
+<form id = 'dashboard' action=''>
+  <table cellpadding=10>
+    <tr>
+      <th colspan=2>Patient Dashboard</th>
+    </tr>
+    <tr>
+      <td>
+        <h1 id='project_name'>
+          <span style="color: #6281A7;">anc</span>
+        </h1>
+        <span id='patient_name'>
+          <%= @patient.name %>
+        </span>
+        <span id='patient_id'>
+          <%= @patient.national_id %>
+        </span>
+        <span id='patient_residence'>
+          <%= @patient.residence %>
+        </span>
+        <span id='patient_age'>
+          <%= @patient.age %>
+        </span>
+        <span id='patient_gender'>
+          <%= @patient.gender %>
+        </span>
+        <!--div id="patient_card">
+          <div value="AZT">Regimen</div>
+          <div value="No">On CPT?</div>
+        </div-->
+        <select id="links">
+          <option value='/patients/patient_history/?patient_id=<%= @patient.id  %>'>Patient History</option>
+
+          <!--
+          <% if !@names.include?("CURRENT PREGNANCY") %>
+          
+            <option value='/patients/current_pregnancy/?patient_id=<%= @patient.id  %>'>Current Pregnancy</option>
+            
+          <% else %>
+            
+            <option value='/patients/hiv_status/?patient_id=<%= @patient.id  %>'>Pregnancy Update</option>
+            
+          <% end %>
+          -->
+          
+          <option value='/patients/<%= (@current_encounter_names.include?("ANC VISIT TYPE") ? 
+              "current_visit" : "visit_type") %>/?patient_id=<%= @patient.id  %>'>Current Visit</option>
+          <option value='/patients/demographics?patient_id=<%= @patient.id %>'>Full Demographics</option>
+        </select>
+        <select id="tabs">
+          <option value='/patients/tab_visit_summary?patient_id=<%= @patient.id  %>'>Visit Summary</option>
+          <option value='/patients/tab_obstetric_history?patient_id=<%= @patient.id  %>'
+                  <%= (@obstretrics_alert ? " alertTab='true'" : (@obstetrics_selected ? " selectedTab='true'" : "")) %> >
+            Obstetric History</option>
+          <option value='/patients/tab_medical_history?patient_id=<%= @patient.id  %>'
+                  <%= (@medics_alert ? " alertTab='true'" : (@medics_selected ? " selectedTab='true'" : "")) %> >
+            Medical History</option>
+          <option value='/patients/tab_social_history?patient_id=<%= @patient.id  %>'
+                  <%= (@social_alert ? " alertTab='true'" : (@social_selected ? " selectedTab='true'" : "")) %> >
+            Social History</option>
+          <option value='/patients/tab_lab_results?patient_id=<%= @patient.id  %>'
+                  <%= (@labs_alert == true ? " alertTab='true'" : (@labs_selected == true ? " selectedTab='true'" : "")) %> >Lab Results</option>
+          <option value='/patients/tab_detailed_obstetric_history?patient_id=<%= @patient.id  %>'>Detailed Obstetric History</option>
+          <option value='/patients/tab_visit_history?patient_id=<%= @patient.id  %>'>Current Pregnancy</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td align='center'>
+        <input type='submit' value='Finish' />
+      </td>
+    </tr>
+  </table>
+</form>

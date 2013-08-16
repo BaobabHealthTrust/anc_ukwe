@@ -1,0 +1,334 @@
+<style>
+  .touchscreenTextInput, 
+  .tt_controls_time_until_next_appointment #keyboard, 
+  .tt_controls_next_appointment_date #num,
+  .tt_controls_next_appointment_date #Unknown {
+    /*display:none;*/
+  }
+  .tt_controls_next_appointment_date #keyboard{
+    /*top:80px;*/
+  }
+
+  #information {
+    display: none;
+    border: 1px #000 solid;
+    font-size: 2em;
+    left: 585px;
+    padding: 10px;
+    position: absolute;
+    text-align: center;
+    top: 463px;
+    width: 350px;
+    height: 160px;
+    z-index: 2000;
+    -moz-user-select:none;
+    -moz-border-radius: 10px;
+    margin-top: 10px;
+    background-color: #EEFFEE;
+  }
+
+  #expected_date_of_delivery {
+    top: 380px;
+    width: 915px;
+    left: -475px;
+  }
+
+  #today {
+    display: none;
+  }
+  #Unknown {
+    display: none;
+  }
+</style>
+
+<%= javascript_include_tag "dateformat" %>
+<%= javascript_include_tag "prototype"%>
+
+<script>
+  var tt_cancel_destination = "/patients/current_visit/?patient_id=<%= @patient.patient_id %>";
+  var number_of_days_to_add = <%= @patient.number_of_days_to_add_to_next_appointment_date(session[:datetime] || Date.today) %>
+  var clinic_days = "<%= GlobalProperty.find_by_property('clinic_days').property_value rescue 'Monday,Tuesday,Wednesday,Thursday,Friday' %>"
+  clinic_days = clinic_days.split(',');
+
+<%
+clinic_holidays = GlobalProperty.find_by_property('clinic_holidays').property_value rescue '1900-12-25,1900-03-03' 
+clinic_holidays = clinic_holidays.split(',').map{|day|day.to_date}.join(',')
+%>
+  var holidays = '<%= clinic_holidays %>' 
+ 
+  function handleAppointments(visit_date) {
+    suggest_date = new Date(visit_date.getFullYear(),visit_date.getMonth(),visit_date.getDate() + number_of_days_to_add)
+    skip = true
+    while (skip) {
+      for (i = 0 ; i < clinic_days.length ; i++) {
+        if (clinic_days[i] == dateFormat(suggest_date,'dddd'))
+          skip = false
+      }
+      if (skip)
+        suggest_date = new Date(suggest_date.getFullYear(),suggest_date.getMonth(),suggest_date.getDate() - 1)
+    }
+    return suggest_date
+  }
+
+  function dateCreate(date_str){
+    date_array = []
+    date_array.push(parseInt(date_str.substring(0,4)))
+    date_array.push(parseInt(date_str.substring(5,7)) - 1)
+    date_array.push(parseInt(date_str.substring(8,10)))
+    return new Date(date_array[0],date_array[1],date_array[2])
+  }
+  
+  function calculate_dates(start_date,end_date) {
+    if (start_date == '' && end_date == ''){
+      /*
+      ds.date.setDate(ds.date.getDate() + (7 * parseInt($('time_until_next_visit').value)));
+      $('dateselector_year').value = ds.date.getFullYear();
+      $('dateselector_month').value = DateUtil.months[ds.date.getMonth()];
+      $('dateselector_day').value = ds.date.getDate(); 
+      $('next_appointment_date').value = ds.date
+      ds.init();
+      $('touchscreenInput1').value = ds.date.getFullYear() + '-' + DateUtil.months[ds.date.getMonth()] + '-' + ds.date.getDate()
+       */
+
+      // visit_date = dateCreate('<%=session[:datetime].to_date rescue Date.today %>')
+      
+      visit_date = new Date('<%= (session[:datetime].to_date rescue Date.today).strftime("%Y-%m-%d") %>');
+
+      auto_expire_date = new Date(visit_date.getFullYear(),visit_date.getMonth(),visit_date.getDate() + (7 * parseInt($('time_until_next_visit').value)));
+      week = (parseInt((auto_expire_date - visit_date) / (7 * 24 * 60 * 60 * 1000))) 
+      visit_date.setDate(visit_date.getDate() + (7 * (week + 1)));
+      visit_date = handleAppointments(visit_date)
+      $('dateselector_year').value = visit_date.getFullYear();
+      $('dateselector_month').value = DateUtil.months[visit_date.getMonth()];
+      $('dateselector_day').value = visit_date.getDate(); 
+      $('touchscreenInput1').value = visit_date.getFullYear() + '-' + DateUtil.months[visit_date.getMonth()] + '-' + visit_date.getDate() 
+    }else{
+      visit_date = dateCreate(start_date)
+      auto_expire_date = dateCreate(end_date)
+      week = parseInt((auto_expire_date - visit_date) / (7 * 24 * 60 * 60 * 1000))
+      visit_date.setDate(visit_date.getDate() + (7 * week));
+
+      visit_date = assignCloseToExpireDate(visit_date,auto_expire_date); //make sure the next appoint date is close to
+      visit_date = handleAppointments(visit_date) //make sure that the date does not fall on a holiday/non-clinic day
+
+      $('dateselector_year').value = visit_date.getFullYear();
+      $('dateselector_month').value = DateUtil.months[visit_date.getMonth()];
+      $('dateselector_day').value = visit_date.getDate(); 
+      $('touchscreenInput1').value = visit_date.getFullYear() + '-' + DateUtil.months[visit_date.getMonth()] + '-' + visit_date.getDate()
+    }
+
+    $('dateselector_nextYear').setAttribute('onmousedown','ds.incrementYear();showDate()')
+    $('dateselector_nextMonth').setAttribute('onmousedown','ds.incrementMonth();showDate()')
+    $('dateselector_nextDay').setAttribute('onmousedown','ds.incrementDay();showDate()')
+
+    $('dateselector_preYear').setAttribute('onmousedown','ds.decrementYear();showDate()')
+    $('dateselector_preMonth').setAttribute('onmousedown','ds.decrementMonth();showDate()')
+    $('dateselector_preDay').setAttribute('onmousedown','ds.decrementDay();showDate()')
+
+    showDate();
+  }
+  
+  function assignCloseToExpireDate(set_date,auto_expire_date) {
+    if (set_date < auto_expire_date){
+      while (set_date < auto_expire_date) {
+        set_date = new Date(set_date.getFullYear(),set_date.getMonth(),set_date.getDate() + 1)
+      }
+      //Give the patient a 2 day buffer
+      set_date = new Date(set_date.getFullYear(),set_date.getMonth(),set_date.getDate() - 2)
+    }
+    return set_date
+  }
+
+  function showDate() {    
+    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    
+    year = $('dateselector_year').value;
+    month = $('dateselector_month').value;
+    day = $('dateselector_day').value;
+        
+    if (day.toString().length == 1)
+      day = '0' + day.toString()
+    
+    for (i = 0 ; i < months.length ; i++) {
+      if (months[i] == month)
+        month = (i + 1).toString();
+    }
+
+    if (month.length == 1)
+      month = '0' + month;  
+    /*
+    new_date = dateCreate(year + '-' + month + '-' + day);
+     */
+       
+    var appointmentDate = new Date(year + '-' + month + '-' + day);
+    
+    $('appointmentdate').innerHTML = days[appointmentDate.getDay()] + ", " + months[appointmentDate.getMonth()] + 
+      " " + appointmentDate.getDate() + ", " + appointmentDate.getFullYear();
+    
+    showRecordedAppointments(year + '-' + month + '-' + day);
+    
+    // try{
+    var theDate = new Date($("lmp").value.trim());
+      
+    var s = appointmentDate - theDate;
+
+    var gestation = String(Math.floor(s / (24 * 60 * 60 * 7 * 1000)));
+
+    __$("app_date").innerHTML = gestation;
+    // } catch(e){}
+   
+    
+    timedEvent = setTimeout('showDate()', 300);
+  }
+
+  function calculateGivenRange(start_date,end_date) {
+    if (start_date && end_date)
+      gotoNextPage();
+  }
+
+  function showRecordedAppointments(setdate) {    
+    msgBox = $('information')
+    msgBox.style.display = 'block';
+    new Ajax.Request("/patients/number_of_booked_patients?date=" + setdate ,{method:'get',onSuccess: function(transport){
+        count = JSON.parse(transport.responseText) || "";
+        if (count) {
+          msgBox.innerHTML = "Total number of booked patients on this day:<br />" + count ;
+        }else{
+          msgBox.innerHTML = "Total number of booked patients on this day:<br />" + 0 ;
+        }
+      }});
+  }
+  
+  function hideInfo() {
+    $('information').style.display = 'none';
+  }
+   
+  function calculateEDOD(){
+    var edod = "";
+    var gestation = "";
+    var month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    if(!$('expected_date_of_delivery')){
+      var div = document.createElement("div");
+      div.id = "expected_date_of_delivery";
+      div.className = "statusLabel";
+      div.style.top = "80px";
+
+      $("page" + tstCurrentPage).appendChild(div);
+    }
+
+    if($("lmp").value.trim().length == 0){
+      $("lmp").value = "<%= (session[:datetime] ? session[:datetime].to_date : Date.today).strftime("%Y-%m-%d") %>";
+    }
+
+    var theDate = new Date($("lmp").value.trim());
+
+    // theDate.setDate(theDate.getDate() + 7);
+
+    var today = new Date("<%= (session[:datetime] ? session[:datetime].to_date : Date.today).strftime("%Y-%m-%d") %>");
+
+    var s = today - theDate;
+
+    gestation = String(Math.floor(s / (24 * 60 * 60 * 7 * 1000)));
+
+    theDate.setMonth(theDate.getMonth() + 9);
+
+    edod = (theDate.getDate() + "-" + month[theDate.getMonth()] + "-" + theDate.getFullYear());    
+
+    $("expected_date_of_delivery").innerHTML = "Next Appointment Date: <i id='appointmentdate' " + 
+      "style='font-size: 1.2em; float: right;'>&nbsp;</i><br /><br /><!--Expected Date Of Delivery: " + 
+      "<i style='font-size: 1.2em; float: right;'>" +
+      dateFormat(theDate,"dddd, mmm dS, yyyy") + "</i><br /><br />-->Gestation Weeks: " + (gestation < 32 &&
+      gestation.trim().length > 0 ? "" : 
+      (gestation > 42 && gestation.trim().length > 0 ? "<i id='app_date' style='color: red'>(Abnormal)</i>" : "")) +
+      "<i id='app_date' style='font-size: 1.2em; float: right; width: 100px;'>" + gestation + "</i>";
+
+    __$("inputFrame" + tstCurrentPage).style.display = "none";
+    
+  }
+
+  function setAppointmentDate(){
+    var days = parseInt(__$("touchscreenInput" + tstCurrentPage).getAttribute("tstValue")) * 7;
+    
+    if($("lmp").value.trim().length == 0){
+      $("lmp").value = "<%= (session[:datetime] ? session[:datetime].to_date : Date.today).strftime("%Y-%m-%d") %>";
+    }
+
+    var appointmentDate = new Date($("lmp").value);
+    
+    if(days == 0)
+      appointmentDate = new Date(tstCurrentDate);
+    
+    appointmentDate.setDate(appointmentDate.getDate() + days);
+    
+    __$("next_appointment_date").value = appointmentDate.getFullYear() + "-" + 
+      padZeros((appointmentDate.getMonth() + 1),2) + "-" + padZeros(appointmentDate.getDate(), 2);
+    
+  }
+
+</script>
+
+<%= hidden_field_tag "lmp", "#{@current_range[0]["START"]}" %>
+
+<form id='appointment' action="/encounters/create" method='post'>
+  <%= hidden_field_tag "encounter[encounter_type_name]", "APPOINTMENT" %>
+  <%= hidden_field_tag "encounter[patient_id]", @patient.id %>
+  <%= hidden_field_tag "encounter[encounter_datetime]", DateTime.now() %>
+  <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>  
+
+  <label for='time_until_next_visit'>Time Until Next Appointment</label>
+<%#= select_tag("time_until_next_visit", options_for_select([["2 weeks", 2],
+["1 month", 4],
+["2 months", 8],
+["3 months", 12]]),
+{:helpText => 'Time Until Next Appointment',
+:tt_onLoad => "calculateGivenRange('#{params[:start_date]}','#{params[:end_date]}')",
+:tt_onUnLoad => "setAppointmentDate();"}) %>
+
+  <% 
+  current = (session[:datetime] ? session[:datetime].to_date : Date.today).strftime("%Y-%m-%d")
+  trimester = (current.to_date - @current_range[0]["START"].to_date).to_i / 7 rescue 0
+  
+  periods = {22 => "20-24 weeks", 30 => "28-32 weeks", 36 => "36 weeks", 0 => "Other"} 
+  
+  actual = periods.collect{|p, v| [v, p] if p > trimester || p == 0}
+%>
+  
+  <%= select_tag("time_until_next_visit", options_for_select(actual),
+    {:helpText => 'Gestation Weeks at Next Visit',
+      :tt_onLoad => "calculateGivenRange('#{params[:start_date]}','#{params[:end_date]}')",
+      :tt_onUnLoad => "setAppointmentDate();"}) %>
+
+  <%
+  absolute_min = params[:start_date].to_date.year rescue Date.today.year
+  absolute_max = params[:end_date].to_date.year + 1 rescue Date.today.year + 1%>
+  <!--label for='next_appointment_date'>Next Appointment Date</label-->
+  <%= hidden_field_tag("observations[][concept_name]", "RETURN VISIT DATE") %>
+  <%= hidden_field_tag("observations[][patient_id]", @patient.id) %>
+  <%= hidden_field_tag("observations[][obs_datetime]", DateTime.now()) %>
+<%# = text_field_tag("observations[][value_datetime]", nil, #(Time.now + 1.month).year,
+{:helpText => 'Next Appointment Date',
+:field_type => 'date',
+:absoluteMin => absolute_min,
+:absoluteMax => absolute_max,
+:maxDate => "#{ ((session[:datetime] ? session[:datetime].to_date : Date.today) + 6.month).strftime("%Y-%m-%d") }",
+:tt_pageStyleClass => "Date DatesOnly",
+:tt_onLoad => "/*calculate_dates('#{params[:start_date]}','#{params[:end_date]}');*/ calculateEDOD();",
+:id => 'next_appointment_date',
+:tt_onUnLoad => "hideInfo();"}) %>
+
+  <%= text_field_tag("observations[][value_datetime]", nil, #(Time.now + 1.month).year,
+    { :helpText => "Next Appointment",
+      :field_type => 'date',
+      :tt_onLoad => "calculateEDOD(); showDate();",
+      :id => 'next_appointment_date',
+      :maxDate => "#{ ((session[:datetime] ? session[:datetime].to_date : Date.today) + 6.month).strftime("%Y-%m-%d") }",
+      :tt_onUnLoad => "hideInfo();"}) %>
+
+  <%= submit_tag "Finish" %>
+</form>
+
+<div id = 'information'>
+  Total number of booked patients on this day:<br /> 0
+</div>

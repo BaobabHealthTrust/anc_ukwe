@@ -1,0 +1,31 @@
+<script type="text/javascript" language="javascript">
+  <!--
+  tt_cancel_destination = "/patients/patient_history/?patient_id=<%= @patient.id %>";
+  //-->
+</script>
+<div id="general_dashboard" style="margin: 2px; border: 1px #ccc solid; padding: 10px;">
+  <h2 style="margin-top: 5px; margin-left: 15px;">Pregnancy Visit History</h2>
+  <select id="tabs">
+
+    <%     
+    pos = @range.length
+
+    @range.each do |yr|
+      if !@gravida.nil?      
+      %>
+
+        <option value='/patients/tab_visit_history?patient_id=<%= @patient.id  %>&target_date=<%= yr.strftime("%Y-%m-%d") %>'>
+        <%= pos + (@gravida > 1 ? (@gravida - 1) : 0) %><sup><%= case pos + (@gravida > 1 ? (@gravida - 1) : 0) when 1: "st" when 2: "nd" when 3: "rd" else "th" end %></sup>
+        </option>  
+
+      <% 
+      end
+      pos -= 1
+    end 
+  %>
+
+  </select>
+
+  <div id="tabBucket" style="height: 526px;">
+  </div>
+</div>
