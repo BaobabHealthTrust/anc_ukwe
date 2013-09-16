@@ -468,7 +468,7 @@ EOF
           if concept
             # if !active_years[e.encounter_datetime.beginning_of_quarter.strftime("%Y-%m-%d")]                            
             if o.concept_id == (ConceptName.find_by_name("DATE OF LAST MENSTRUAL PERIOD").concept_id rescue nil)
-                pregnancies[e.encounter_datetime.strftime("%Y-%m-%d")]["DATE OF LAST MENSTRUAL PERIOD"] = o.answer_string.squish          
+              pregnancies[e.encounter_datetime.strftime("%Y-%m-%d")]["DATE OF LAST MENSTRUAL PERIOD"] = o.answer_string.squish
               # active_years[e.encounter_datetime.beginning_of_quarter.strftime("%Y-%m-%d")] = true 
             end              
             # end
@@ -496,8 +496,8 @@ EOF
 
     if (abortion_check_encounter.present? && aborted && date_aborted.present? && current_range["START"].to_date < date_aborted.to_date rescue false)
     
-    		current_range["START"] = date_aborted.to_date + 1.month
-    		current_range["END"] = date_aborted.to_date + 1.month + 7.day + 45.week # 9.month
+      current_range["START"] = date_aborted.to_date + 1.month
+      current_range["END"] = date_aborted.to_date + 1.month + 7.day + 45.week # 9.month
     end
     
     return [current_range, pregnancies]
@@ -894,94 +894,83 @@ EOF
       @range << preg[0].to_date
     }
     
-    @deliveries = Observation.find(:last,
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('PARITY').concept_id]).answer_string.to_i rescue nil
+    deliveries = Observation.find(:last,
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('PARITY').concept_id]).answer_string.squish rescue nil
+
+    @deliveries = deliveries.to_i rescue deliveries if deliveries
 
     @deliveries = @deliveries + (@range.length > 0 ? @range.length - 1 : @range.length) if !@deliveries.nil?
     
-    @gravida = Observation.find(:last,
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('GRAVIDA').concept_id]).answer_string.to_i rescue nil
+    gravida = Observation.find(:last,
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('GRAVIDA').concept_id]).answer_string.squish rescue nil
+
+    @gravida = gravida.to_i rescue gravida
 
     @multipreg = Observation.find(:last,
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all, :conditions => ["encounter_type = ?", 
-            EncounterType.find_by_name("OBSTETRIC HISTORY").id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('MULTIPLE GESTATION').concept_id]).answer_string rescue nil
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('MULTIPLE GESTATION').concept_id]).answer_string.squish rescue nil
+    
+    abortions = Observation.find(:last,
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('NUMBER OF ABORTIONS').concept_id]).answer_string.squish rescue nil
 
-    @abortions = Observation.find(:last,
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('NUMBER OF ABORTIONS').concept_id]).answer_string.to_i rescue nil
+    @abortions = abortions.to_i rescue abortions
 
     @stillbirths = Observation.find(:last,
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('STILL BIRTH').concept_id]).answer_string rescue nil
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('STILL BIRTH').concept_id]).answer_string.squish rescue nil
 
-    @csections = Encounter.active.find(:all, :conditions => ["patient_id = ? AND encounter_type = ?", 
-        @patient.id, EncounterType.find_by_name("OBSTETRIC HISTORY").id]).collect{|e| 
-      e.observations.collect{|o| o.answer_string if o.answer_string.match(/caesarean\ssection/i)}
-    }.flatten.delete_if{|x| x.nil?}.length rescue nil
+    @csections = Observation.find(:all,
+      :conditions => ["person_id = ? AND (concept_id = ? AND value_coded = ?)", @patient.id,
+        ConceptName.find_by_name('Caesarean section').concept_id, ConceptName.find_by_name('Yes').concept_id]).length rescue nil
       
-    @vacuum = Encounter.active.find(:all, :conditions => ["patient_id = ? AND encounter_type = ?", 
-        @patient.id, EncounterType.find_by_name("OBSTETRIC HISTORY").id]).collect{|e| 
-      e.observations.collect{|o| o.answer_string if o.answer_string.match(/Vacuum\sextraction\sdelivery/i)}
-    }.flatten.delete_if{|x| x.nil?}.length rescue nil
+    @vacuum = Observation.find(:all,
+      :conditions => ["person_id = ? AND value_coded = ?", @patient.id,
+        ConceptName.find_by_name('Vacuum extraction delivery').concept_id]).length rescue nil
       
-    @symphosio = Observation.find(:last, 
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('SYMPHYSIOTOMY').concept_id]).answer_string rescue nil
+    @symphosio = Observation.find(:last,
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('SYMPHYSIOTOMY').concept_id]).answer_string.squish rescue nil
 
     @haemorrhage = Observation.find(:last,
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('HEMORRHAGE').concept_id]).answer_string rescue nil
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('HEMORRHAGE').concept_id]).answer_string.squish rescue nil
 
     @preeclampsia = Observation.find(:last,
-      :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?", @patient.id,
-        Encounter.active.find(:all).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('PRE-ECLAMPSIA').concept_id]).answer_string rescue nil
+      :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('PRE-ECLAMPSIA').concept_id]).answer_string.squish rescue nil
 
-    @asthma = Observation.find(:last, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ?", @patient.id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('ASTHMA').concept_id]).answer_string.upcase rescue nil
+    @asthma = Observation.find(:last, :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('ASTHMA').concept_id]).answer_string.squish.upcase rescue nil
 
-    @hyper = Observation.find(:last, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ?", @patient.id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('HYPERTENSION').concept_id]).answer_string.upcase rescue nil
+    @hyper = Observation.find(:last, :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('HYPERTENSION').concept_id]).answer_string.squish.upcase rescue nil
+    
+    @diabetes = Observation.find(:last, :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('DIABETES').concept_id]).answer_string.squish.upcase rescue nil
 
-    @diabetes = Observation.find(:last, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ?", @patient.id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('DIABETES').concept_id]).answer_string.upcase rescue nil
+    @epilepsy = Observation.find(:last, :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('EPILEPSY').concept_id]).answer_string.squish.upcase rescue nil
 
-    @epilepsy = Observation.find(:last, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ?", @patient.id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('EPILEPSY').concept_id]).answer_string.upcase rescue nil
+    @renal = Observation.find(:last, :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('RENAL DISEASE').concept_id]).answer_string.squish.upcase rescue nil
 
-    @renal = Observation.find(:last, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ?", @patient.id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('RENAL DISEASE').concept_id]).answer_string.upcase rescue nil
+    @fistula = Observation.find(:last, :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('FISTULA REPAIR').concept_id]).answer_string.squish.upcase rescue nil
 
-    @fistula = Observation.find(:last, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ?", @patient.id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('FISTULA REPAIR').concept_id]).answer_string.upcase rescue nil
-
-    @deform = Observation.find(:last, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ?", @patient.id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('SPINE OR LEG DEFORM').concept_id]).answer_string.upcase rescue nil
+    @deform = Observation.find(:last, :conditions => ["person_id = ? AND concept_id = ?", @patient.id,
+        ConceptName.find_by_name('SPINE OR LEG DEFORM').concept_id]).answer_string.squish.upcase rescue nil
 
     @surgicals = Observation.find(:all, :conditions => ["person_id = ? AND encounter_id IN (?) AND concept_id = ?",
-        @patient.id, Encounter.active.find(:all, :conditions => ["patient_id = ? AND encounter_type = ?", 
+        @patient.id, Encounter.find(:all, :conditions => ["patient_id = ? AND encounter_type = ?",
             @patient.id, EncounterType.find_by_name("SURGICAL HISTORY").id]).collect{|e| e.encounter_id},
-        ConceptName.find_by_name('PROCEDURE DONE').concept_id]).collect{|o| 
-      "#{o.answer_string} (#{o.obs_datetime.strftime('%d-%b-%Y')})"} rescue []
+        ConceptName.find_by_name('PROCEDURE DONE').concept_id]).collect{|o|
+      "#{o.answer_string.squish} (#{o.obs_datetime.strftime('%d-%b-%Y')})"} rescue []
 
-    @age = @patient.age rescue 0
+    @age = self.age rescue 0
+    
 
     label = ZebraPrinter::StandardLabel.new
 
@@ -990,7 +979,7 @@ EOF
     label.draw_text("Refer",750,29,0,1,1,2,true)
     label.draw_line(25,60,172,1,0)
     label.draw_line(400,60,152,1,0)
-    label.draw_text("C-Sections",28,80,0,2,1,1,false)
+    label.draw_text("Gravida",28,80,0,2,1,1,false)
     label.draw_text("Asthma",400,80,0,2,1,1,false)
     label.draw_text("Deliveries",28,110,0,2,1,1,false)
     label.draw_text("Hypertension",400,110,0,2,1,1,false)
@@ -1000,7 +989,8 @@ EOF
     label.draw_text("Epilepsy",400,170,0,2,1,1,false)
     label.draw_text("Vacuum Extraction",28,200,0,2,1,1,false)
     label.draw_text("Renal Disease",400,200,0,2,1,1,false)
-    label.draw_text("Symphisiotomy",28,230,0,2,1,1,false)
+    # label.draw_text("Symphisiotomy",28,230,0,2,1,1,false)
+    label.draw_text("C/Section",28,230,0,2,1,1,false)
     label.draw_text("Fistula Repair",400,230,0,2,1,1,false)
     label.draw_text("Haemorrhage",28,260,0,2,1,1,false)
     label.draw_text("Leg/Spine Deformation",400,260,0,2,1,1,false)
@@ -1028,21 +1018,22 @@ EOF
     label.draw_line(659,220,130,1,0)
     label.draw_line(659,250,130,1,0)
     label.draw_line(659,280,130,1,0)
-    label.draw_text("#{(!@csections.nil? ? (@csections <= 0 ? "NO" : "YES") : "")}",280,80,0,2,1,1,
-      (!@csections.nil? ? (@csections <= 0 ? false : true) : false))
-    label.draw_text("#{@deliveries}",280,110,0,2,1,1,(@deliveries > 4 ? true : false))
+    label.draw_text("#{@gravida}",280,80,0,2,1,1,false)
+    label.draw_text("#{@deliveries}",280,110,0,2,1,1,((@deliveries  || -1)> 4 ? true : false))
     label.draw_text("#{@abortions}",280,140,0,2,1,1,(@abortions > 1 ? true : false))
     label.draw_text("#{(!@stillbirths.nil? ? (@stillbirths.upcase == "NO" ? "NO" : "YES") : "")}",280,170,0,2,1,1,
       (!@stillbirths.nil? ? (@stillbirths.upcase == "NO" ? false : true) : false))
     label.draw_text("#{(!@vacuum.nil? ? (@vacuum > 0 ? "YES" : "NO") : "")}",280,200,0,2,1,1,
       (!@vacuum.nil? ? (@vacuum > 0 ? true : false) : false))
-    label.draw_text("#{(!@symphosio.nil? ? (@symphosio.upcase == "NO" ? "NO" : "YES") : "")}",280,230,0,2,1,1,
-      (!@symphosio.nil? ? (@symphosio.upcase == "NO" ? false : true) : false))
-    label.draw_text("#{@haemorrhage}",280,260,0,2,1,1,(@haemorrhage.upcase == "PPH" ? true : false))
-    label.draw_text("#{(!@preeclampsia.nil? ? (@preeclampsia.upcase == "NO" ? "NO" : "YES") : "")}",280,285,0,2,1,1,
+    # label.draw_text("#{(!@symphosio.nil? ? (@symphosio.upcase == "NO" ? "NO" : "YES") : "")}",280,230,0,2,1,1,
+    #   (!@symphosio.nil? ? (@symphosio.upcase == "NO" ? false : true) : false))
+    label.draw_text("#{(!@csections.nil? ? (@csections <= 0 ? "NO" : "YES") : "")}",280,230,0,2,1,1,
+      (!@csections.nil? ? (@csections <= 0 ? false : true) : false))
+    label.draw_text("#{@haemorrhage}",280,260,0,2,1,1,((@haemorrhage || "").upcase == "PPH" ? true : false))
+    label.draw_text("#{(!@preeclampsia.nil? ? ((@preeclampsia || "").upcase == "NO" ? "NO" : "YES") : "")}",280,285,0,2,1,1,
       (!@preeclampsia.nil? ? (@preeclampsia.upcase == "NO" ? false : true) : false))
-    
-    label.draw_text("#{(!@asthma.nil? ? (@asthma.upcase == "NO" ? "NO" : "YES") : "")}",690,80,0,2,1,1,
+
+    label.draw_text("#{(!@asthma.nil? ? ((@asthma || "").upcase == "NO" ? "NO" : "YES") : "")}",690,80,0,2,1,1,
       (!@asthma.nil? ? (@asthma.upcase == "NO" ? false : true) : false))
     label.draw_text("#{(!@hyper.nil? ? (@hyper.upcase == "NO" ? "NO" : "YES") : "")}",690,110,0,2,1,1,
       (!@hyper.nil? ? (@hyper.upcase == "NO" ? false : true) : false))
@@ -1554,21 +1545,46 @@ EOF
     }
     arr
   end
+
+  def fundus
+    self.patient.encounters.collect{|e|
+      e.observations.collect{|o|
+        o.answer_string.to_i if o.concept.concept_names.map(& :name).include?("Fundus")
+      }.compact
+    }.uniq.delete_if{|x| x == []}.flatten.max
+  end
+
+  def fundus_by_lmp(today = Date.today)
+    self.encounters.find(:all, :conditions => ["DATE(encounter_datetime) BETWEEN ? AND ?",
+        today.to_date - 10.months, today.to_date]).collect{|e|
+      e.observations.collect{|o|
+        (((today.to_date - o.answer_string.to_date).to_i/7) rescue nil) if (o.concept.concept_names.map(& :name).include?("Date of last menstrual period") rescue false)
+      }.compact
+    }.uniq.delete_if{|x| x == []}.flatten.min
+  end
   
   def anc_visits(patient, session_date = Date.today)
   
-  		@current_range = Patient.active_range(patient.id, session_date)
-  		start = @current_range[0]["START"].to_date rescue session_date - 8.month
-  		ennd = @current_range[0]["END"].to_date rescue session_date + 6.month
-     
-      self.encounters.all(:conditions => 
-          ["DATE(encounter_datetime) >= ? AND DATE(encounter_datetime) <= ? AND encounter_type = ?", 
-          start, ennd,
-          EncounterType.find_by_name("ANC VISIT TYPE")]).collect{|e| 
-        e.observations.collect{|o| 
-          o.answer_string.to_i if o.concept.concept_names.first.name.downcase == "reason for visit"
-        }.compact
-      }.flatten rescue []
+    @current_range = Patient.active_range(patient.id, session_date)
+    start = @current_range[0]["START"].to_date rescue session_date - 8.month
+    ennd = @current_range[0]["END"].to_date rescue session_date + 6.month
+    
+    self.encounters.all(:conditions =>
+        ["DATE(encounter_datetime) >= ? AND DATE(encounter_datetime) >= ? AND DATE(encounter_datetime) <= ? AND encounter_type = ?",
+        start, (self.lmp.to_date rescue (session_date.to_date - 9.months)), ennd,
+        EncounterType.find_by_name("ANC VISIT TYPE")]).collect{|e|
+      e.observations.collect{|o|
+        o.answer_string.to_i if o.concept.concept_names.first.name.downcase == "reason for visit"
+      }.compact
+    }.flatten rescue []
+  end
+
+  def lmp(today = Date.today)
+    self.encounters.collect{|e|
+      e.observations.collect{|o|
+        (o.answer_string.to_date rescue nil) if (o.concept.concept_names.map(& :name).include?("Date of last menstrual period") rescue false) && o.answer_string.to_date <= today.to_date
+      }.compact
+    }.uniq.delete_if{|x| x == []}.flatten.max
   end
   
 end

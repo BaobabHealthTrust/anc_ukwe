@@ -3,9 +3,15 @@ class PatientsController < ApplicationController
   
   def show  
     @patient = Patient.find(params[:patient_id]  || params[:id] || session[:patient_id]) rescue nil    
+    session_date = (session[:datetime].to_date rescue Date.today)
+     
+    @current_range = Patient.active_range(@patient.id, session_date)  rescue nil
+   
+    if request.referrer.match(/people\/search\?|\/clinic|people\/create/i)
+      @current_pregnancy_url =  "/patients/current_pregnancy/?patient_id=#{@patient.id}"
+      redirect_to "/patients/confirm/?patient_id=#{@patient.id}&url=#{@current_pregnancy_url}" and return
+    end
     
-    @current_range = Patient.active_range(@patient.id, (session[:datetime] ? session[:datetime].to_date : Date.today)) # rescue nil
-	
     @encounters = @patient.encounters.active.find(:all, :conditions => ["encounter_datetime >= ? AND encounter_datetime <= ?", 
         @current_range[0]["START"], @current_range[0]["END"]]) rescue []
     
@@ -13,13 +19,8 @@ class PatientsController < ApplicationController
     
     @encounter_names = @patient.encounters.active.find(:all, :conditions => ["encounter_datetime >= ? AND encounter_datetime <= ?", 
         @current_range[0]["START"], @current_range[0]["END"]]).map{|encounter| encounter.name}.uniq rescue []
-	
-		abortion_checked = Encounter.find(:last, :conditions => ["encounter_datetime >= ? AND encounter_type = ? AND patient_id = ? AND voided = 0", 
-			((session[:datetime].to_date rescue Date.today) - 1.month), EncounterType.find_by_name("PREGNANCY STATUS").encounter_type_id, @patient.patient_id]).present?
-		
-		 redirect_to "/patients/check_abortion?patient_id=#{@patient.patient_id}" and return if !abortion_checked && (@current_range[0]["START"].to_time >= 7.months.ago rescue false)
 			
-	   @names = @encounters.collect{|e|
+    @names = @encounters.collect{|e|
       e.name.upcase
     }.uniq
     
@@ -477,7 +478,7 @@ class PatientsController < ApplicationController
     
     
     @encs = (Encounter.active.find(:all, :conditions => ["patient_id = ? AND encounter_type = ?", 
-        @patient.id, EncounterType.find_by_name("OBSTETRIC HISTORY").id]) rescue []).length
+          @patient.id, EncounterType.find_by_name("OBSTETRIC HISTORY").id]) rescue []).length
     
     if @encs > 0
       @deliveries = Observation.find(:last,
@@ -908,7 +909,7 @@ class PatientsController < ApplicationController
     current_level = 0
     
     (Encounter.find(:all, :conditions => ["encounter_type = ? AND patient_id = ?", 
-        EncounterType.find_by_name("OBSTETRIC HISTORY").id, @patient.id]) rescue []).each{|e| 
+          EncounterType.find_by_name("OBSTETRIC HISTORY").id, @patient.id]) rescue []).each{|e|
       e.observations.active.each{|obs|
         concept = obs.concept.name.name rescue nil
         if(!concept.nil?)
@@ -1109,11 +1110,40 @@ class PatientsController < ApplicationController
     
     # raise @religions.to_yaml
   end
+
+  def confirm
+    
+    session_date = (session[:datetime].to_date rescue Date.today)
+    @latest_lmp = @patient.lmp(session_date)
   
-  def check_abortion
-  		@patient = Patient.find(params[:patient_id])  		
+    params[:url] += "&from_confirmation=true"
+
+    @current_pregnancy = @patient.encounters.find(:last,
+      :conditions => ["encounter_type = ? AND voided = 0 AND DATE(encounter_datetime) BETWEEN ? AND ?",
+        EncounterType.find_by_name("CURRENT PREGNANCY"), session_date.to_date - 10.months, session_date.to_date])
+
+    @data = {}
+
+    if @current_pregnancy.present?
+     
+      @data["LMP"] =  @patient.lmp(session_date).strftime("%d/%b/%Y") rescue nil
+      @data["FUNDUS"] = @patient.fundus_by_lmp(session_date) rescue nil
+     
+      @data["ANC VISITS"] = @patient.anc_visits(@patient, session_date).blank? ? nil : @patient.anc_visits(@patient, session_date).uniq
+
+      #disregard irrelevant pregnancies
+      if ((@data["LMP"].present? and @data["LMP"].to_date + 10.months < session_date) rescue true)
+        @data = {}
+      end
+
+    end
+
   end
   
+  def verify_route
+    redirect_to next_task(@patient) and return
+  end
+
   private
 
 end
