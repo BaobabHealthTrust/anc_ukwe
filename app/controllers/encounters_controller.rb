@@ -102,13 +102,12 @@ class EncountersController < ApplicationController
         (encounter.type.name.upcase rescue "") == "TREATMENT" ||
         (encounter.type.name.upcase rescue "") == "UPDATE OUTCOME" ||
         (encounter.type.name.upcase rescue "") == "APPOINTMENT")
-      
-    redirect_to "/patients/patient_history?patient_id=#{@patient.id}" and return if ((encounter.type.name.upcase rescue "") ==
-        "OBSTETRIC HISTORY" || (encounter.type.name.upcase rescue "") == "MEDICAL HISTORY" || 
-        (encounter.type.name.upcase rescue "") == "SURGICAL HISTORY" || 
-        (encounter.type.name.upcase rescue "") == "SOCIAL HISTORY")
-  
-    redirect_to "/patients/print_registration?patient_id=#{@patient.id}" and return if ((encounter.type.name.upcase rescue "") == 
+     
+    print_and_redirect("/patients/obstertic_medical_examination_label/?patient_id=#{@patient.id}",
+      "/patients/patient_history/?patient_id=#{@patient.id}") and return if (["OBSTETRIC HISTORY", "MEDICAL HISTORY", "SURGICAL HISTORY", "SOCIAL HISTORY"].include?((encounter.type.name.upcase.strip rescue "")))
+
+
+    redirect_to "/patients/print_registration?patient_id=#{@patient.id}" and return if ((encounter.type.name.upcase rescue "") ==
         "REGISTRATION")
       
     redirect_to "/patients/current_visit/?patient_id=#{@patient.id}" and return if ((encounter.type.name.upcase rescue "") == 
