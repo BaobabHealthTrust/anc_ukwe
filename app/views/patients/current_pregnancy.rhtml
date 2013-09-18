@@ -156,15 +156,15 @@
     :field_type => "number",
     :tt_pageStyleClass => "NumbersOnly",
     :tt_onUnload => "setDate(__$('touchscreenInput' + tstCurrentPage).value);"
-    }
-  %>
+  }
+%>
 
-  <%= touch_select_tag "Multiple gestation", @patient, 
+  <%= touch_select_tag "Multiple gestation", @patient,
     options_for_select([["", ""], ["No", "No"], ["Yes", "Yes"], ["Unknown", "Unknown"]]),
     {:id => "multiple_gestation",
     :helptext => "Is This a Multiple Pregnancy" } %>
 
-  <%= touch_select_tag "Week of First Visit", @patient, 
+  <%= touch_select_tag "Week of First Visit", @patient,
     options_for_select([["", ""], ["0-12", "0-12"], ["13-24", "13-24"], ["25-28", "25-28"], ["28+", "28+"]]),
     {:id => "week_of_first_visit",
     :helptext => "Week of First Visit",
@@ -173,6 +173,8 @@
   <%= touch_text_field_tag "Planned delivery place", @patient, nil,
     {:id => "planned_delivery_place",
     :helptext => "Planned delivery place",
+    :tt_onLoad => "addHereButton(); ",
+    :tt_onUnLoad => "removeHereButton()",
     :ajaxURL => "/encounters/static_locations?search_string=" } %>
 
   <%= touch_select_tag "Bed Net", @patient, options_for_select([["", ""], ["Yes", "Yes"], ["No", "No"]]),

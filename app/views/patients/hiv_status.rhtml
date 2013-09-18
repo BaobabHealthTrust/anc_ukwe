@@ -100,8 +100,8 @@
   <%= hidden_field_tag "encounter[provider_id]", session[:user_id] %>
   <%  session_date = session[:datetime] || Time.now() %>
 
-  <%= select_tag("choice", options_for_select(["", "Last Menstrual Period", 
-        "Planned delivery place", "Multiple Pregnancy", "Bed Net Given?", "Previous TT Doses"]), 
+  <%= select_tag("choice", options_for_select(["", "Last Menstrual Period",
+        "Planned delivery place", "Multiple Pregnancy", "Bed Net Given?", "Previous TT Doses"]),
     {:helpText => 'Select Task(s)', :id => "choice", :multiple => true})%>
 
   <%= touch_date_tag "LAST MENSTRUAL PERIOD", @patient, @lmp,
@@ -114,6 +114,8 @@
   <%= touch_text_field_tag "Planned delivery place", @patient, @planned_place,
     {:id => "planned_delivery_place",
     :helptext => "Planned delivery place",
+    :tt_onLoad => "addHereButton(); ",
+    :tt_onUnLoad => "removeHereButton()",
     :condition => "getSelected().match(/Planned\sdelivery\splace/)",
     :ajaxURL => "/encounters/static_locations?search_string=" } %>
 
