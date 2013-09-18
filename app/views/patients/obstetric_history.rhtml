@@ -41,7 +41,7 @@
   } %>
   <%= touch_numeric_tag "PARITY", @patient, nil,
     {:id => "enter_number_of_deliveries",
-    :helptext => "Number Of Delivered Pregnancies",
+    :helptext => "Number Of Deliveries",
     :tt_pageStyleClass => "NumbersWithUnknown",
     :condition => "((__$('multiple_pregnancy').value == 'No' && (__$('enter_gravida').value) > 1) || (__$('multiple_pregnancy').value == 'Yes' && __$('enter_gravida').value > 1))",
     :tt_onLoad => "if(__$('multiple_pregnancy').value == 'No'){__$('touchscreenInput' + " +
