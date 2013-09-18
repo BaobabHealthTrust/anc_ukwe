@@ -103,18 +103,13 @@ class EncountersController < ApplicationController
         (encounter.type.name.upcase rescue "") == "UPDATE OUTCOME" ||
         (encounter.type.name.upcase rescue "") == "APPOINTMENT")
      
-    print_and_redirect("/patients/obstertic_medical_examination_label/?patient_id=#{@patient.id}",
-      "/patients/patient_history/?patient_id=#{@patient.id}") and return if (["OBSTETRIC HISTORY", "MEDICAL HISTORY", "SURGICAL HISTORY", "SOCIAL HISTORY"].include?((encounter.type.name.upcase.strip rescue "")))
-
-
     redirect_to "/patients/print_registration?patient_id=#{@patient.id}" and return if ((encounter.type.name.upcase rescue "") ==
         "REGISTRATION")
       
     redirect_to "/patients/current_visit/?patient_id=#{@patient.id}" and return if ((encounter.type.name.upcase rescue "") == 
         "ANC VISIT TYPE" || (encounter.type.name.upcase rescue "") == "CURRENT PREGNANCY")
     
-    # Go to the next task in the workflow (or dashboard)
-    redirect_to next_task(@patient) 
+    redirect_to next_task(@patient)
   end
 
   def new
