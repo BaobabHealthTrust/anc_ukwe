@@ -114,7 +114,7 @@ module ApplicationHelper
   end
   
   def version_tag
-  	`git describe`
+  	BART_VERSION
   end
   
 end
